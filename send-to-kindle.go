@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
@@ -50,20 +49,17 @@ func upload(c *gin.Context) {
 	c.Writer.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
 	c.BindJSON(&data)
-	fmt.Println(data)
 
 	baseDir := "tmp"
 	os.Mkdir(baseDir, 0755)
 
 	client := http.Client{}
-	fmt.Println(data.Data)
 
 	articleText := "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
 	articleText += "<html><head>"
 	articleText += "<meta http-equiv=\"content-type\" content=\"application/xhtml+xml; charset=UTF-8\"></head>"
 	articleText += "<body><div>" + data.Data + "</div></body></html>"
 
-	fmt.Println(articleText)
 	article, _ := goquery.NewDocumentFromReader(strings.NewReader(articleText))
 
 	fileCount := 1
@@ -71,7 +67,6 @@ func upload(c *gin.Context) {
 	title := article.Find(".reader_head").Find("h1").Text()
 	_ = "breakpoint"
 
-	fmt.Println(title)
 	re := regexp.MustCompile("[A-Za-z]+")
 	fileName := strings.Join(re.FindAllString(title, -1), "")
 
@@ -81,7 +76,6 @@ func upload(c *gin.Context) {
 		defer out.Close()
 
 		url := s.AttrOr("src", "")
-		fmt.Println(out.Name())
 		s.SetAttr("src", fileName+strconv.Itoa(fileCount)+".jpg")
 
 		reqImg, _ := client.Get(url)
@@ -94,15 +88,14 @@ func upload(c *gin.Context) {
 
 	html, _ := article.Html()
 
-	fmt.Println(utf8.Valid([]byte(html)))
-	fmt.Println(baseDir + "/" + fileName)
-	fmt.Println(html)
-
 	ioutil.WriteFile(baseDir+"/"+fileName+".html", []byte(html), 0644)
 
 	cmd := exec.Command("./kindlegen", baseDir+"/"+fileName+".html", "-o", fileName+".mobi")
-	ret, _ := cmd.Output()
+	ret, execerr := cmd.Output()
 	fmt.Println(string(ret))
+	if execerr != nil {
+		panic(execerr)
+	}
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", data.SenderAddress)
@@ -110,7 +103,6 @@ func upload(c *gin.Context) {
 	m.SetHeader("Subject", "kindle-sync - "+fileName+".mobi")
 	m.SetBody("text/html", baseDir+"/"+fileName+".mobi")
 	m.Attach(baseDir + "/" + fileName + ".mobi")
-	fmt.Println(data)
 	port, _ := strconv.Atoi(data.SMTPPort)
 	d := gomail.NewPlainDialer(data.SMTPServer, port, data.SenderUsername, data.SenderPassword)
 	err := d.DialAndSend(m)
