@@ -1,1 +1,1 @@
-web: send-to-kindle
+web: send-to-kindle-server
