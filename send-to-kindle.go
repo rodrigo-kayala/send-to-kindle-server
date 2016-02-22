@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,7 +13,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/rodrigo-kayala/go-readability"
+	"github.com/gin-gonic/gin"
+	"github.com/mauidude/go-readability"
 	"gopkg.in/gomail.v2"
 )
 
@@ -25,8 +25,17 @@ func extractContent(doc *goquery.Document) string {
 }
 
 func main() {
-	http.HandleFunc("/", upload)
-	http.ListenAndServe(":6060", nil)
+	port := os.Getenv("PORT")
+
+	if port == "" {
+		port = "6060"
+	}
+
+	router := gin.New()
+	router.Use(gin.Logger())
+
+	router.POST("/", upload)
+	router.Run(":" + port)
 }
 
 // PageData lalsdkflsdkf
@@ -40,16 +49,15 @@ type PageData struct {
 	SenderPassword string `json:"senderPassword"`
 }
 
-func upload(w http.ResponseWriter, r *http.Request) {
+func upload(c *gin.Context) {
 	var data PageData
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
-	b, _ := ioutil.ReadAll(r.Body)
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	c.Writer.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
-	json.Unmarshal(b, &data)
-	fmt.Println(string(b))
+	c.BindJSON(&data)
+	fmt.Println(data)
 
 	baseDir := "tmp"
 	os.Mkdir(baseDir, 0755)
