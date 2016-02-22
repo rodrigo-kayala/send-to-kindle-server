@@ -50,8 +50,7 @@ func upload(c *gin.Context) {
 
 	c.BindJSON(&data)
 
-	baseDir := "tmp"
-	os.Mkdir(baseDir, 0755)
+	baseDir := "/tmp"
 
 	client := http.Client{}
 
@@ -106,12 +105,6 @@ func upload(c *gin.Context) {
 	port, _ := strconv.Atoi(data.SMTPPort)
 	d := gomail.NewPlainDialer(data.SMTPServer, port, data.SenderUsername, data.SenderPassword)
 	err := d.DialAndSend(m)
-
-	if err != nil {
-		panic(err)
-	}
-
-	err = os.RemoveAll(baseDir)
 
 	if err != nil {
 		panic(err)
