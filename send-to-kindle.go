@@ -14,15 +14,8 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
-	"github.com/mauidude/go-readability"
 	"gopkg.in/gomail.v2"
 )
-
-func extractContent(doc *goquery.Document) string {
-	html, _ := doc.Html()
-	r, _ := readability.NewDocument(html)
-	return r.Content()
-}
 
 func main() {
 	port := os.Getenv("PORT")
