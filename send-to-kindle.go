@@ -89,7 +89,13 @@ func upload(c *gin.Context) {
 
 	ioutil.WriteFile(baseDir+"/"+fileName+".html", []byte(html), 0644)
 
-	cmd := exec.Command("./kindlegen", baseDir+"/"+fileName+".html", "-o", fileName+".mobi")
+	kindlegen := os.Getenv("KINDLE_GEN")
+
+	if kindlegen == "" {
+		kindlegen = "kindlegen_macosx"
+	}
+
+	cmd := exec.Command("./"+kindlegen, baseDir+"/"+fileName+".html", "-o", fileName+".mobi")
 	ret, execerr := cmd.Output()
 	fmt.Println(string(ret))
 	if execerr != nil {
