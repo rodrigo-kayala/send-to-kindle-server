@@ -96,7 +96,7 @@ func upload(c *gin.Context) {
 	}
 
 	cmd := exec.Command("./"+kindlegen, baseDir+"/"+fileName+".html", "-o", fileName+".mobi")
-	ret, execerr := cmd.Output()
+	ret, _ := cmd.Output()
 	fmt.Println(string(ret))
 
 	m := gomail.NewMessage()
