@@ -45,6 +45,10 @@
 			"ImportPath": "gopkg.in/gomail.v2",
 			"Comment": "2.0.0-8-gfbb71dd",
 			"Rev": "fbb71ddc63acd07dd0ed49ababdf02c551e2539a"
+		},
+		{
+			"ImportPath": "gopkg.in/validator.v2",
+			"Rev": "3e4f037f12a1221a0864cf0dd2e81c452ab22448"
 		}
 	]
 }
