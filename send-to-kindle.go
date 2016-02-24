@@ -1,20 +1,23 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"os"
-	"os/exec"
-	"regexp"
 	"strconv"
-	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/gomail.v2"
 )
+
+const baseDir string = "/tmp"
+
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	}
+}
 
 func main() {
 	port := os.Getenv("PORT")
@@ -25,6 +28,7 @@ func main() {
 
 	router := gin.New()
 	router.Use(gin.Logger())
+	router.Use(corsMiddleware())
 
 	router.POST("/", upload)
 	router.Run(":" + port)
@@ -41,64 +45,7 @@ type PageData struct {
 	SenderPassword string `json:"senderPassword"`
 }
 
-func upload(c *gin.Context) {
-	var data PageData
-
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-	c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	c.Writer.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-
-	c.BindJSON(&data)
-
-	baseDir := "/tmp"
-
-	client := http.Client{}
-
-	articleText := "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>"
-	articleText += "<html><head>"
-	articleText += "<meta http-equiv=\"content-type\" content=\"application/xhtml+xml; charset=UTF-8\"></head>"
-	articleText += "<body><div>" + data.Data + "</div></body></html>"
-
-	article, _ := goquery.NewDocumentFromReader(strings.NewReader(articleText))
-
-	fileCount := 1
-	article.Find(".sub").Remove()
-	title := article.Find(".reader_head").Find("h1").Text()
-	_ = "breakpoint"
-
-	re := regexp.MustCompile("[A-Za-z]+")
-	fileName := strings.Join(re.FindAllString(title, -1), "")
-
-	article.Find("img").Each(func(i int, s *goquery.Selection) {
-
-		out, _ := os.Create(baseDir + "/" + fileName + strconv.Itoa(fileCount) + ".jpg")
-		defer out.Close()
-
-		url := s.AttrOr("src", "")
-		s.SetAttr("src", fileName+strconv.Itoa(fileCount)+".jpg")
-
-		reqImg, _ := client.Get(url)
-		defer reqImg.Body.Close()
-		fileCount++
-
-		io.Copy(out, reqImg.Body)
-
-	})
-
-	html, _ := article.Html()
-
-	ioutil.WriteFile(baseDir+"/"+fileName+".html", []byte(html), 0644)
-
-	kindlegen := os.Getenv("KINDLE_GEN")
-
-	if kindlegen == "" {
-		kindlegen = "kindlegen_macosx"
-	}
-
-	cmd := exec.Command("./"+kindlegen, baseDir+"/"+fileName+".html", "-o", fileName+".mobi")
-	ret, _ := cmd.Output()
-	fmt.Println(string(ret))
-
+func sendMOBIToKindle(fileName string, data *PageData) {
 	m := gomail.NewMessage()
 	m.SetHeader("From", data.SenderAddress)
 	m.SetHeader("To", data.KindleAddress)
@@ -112,4 +59,21 @@ func upload(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func upload(c *gin.Context) {
+	var data PageData
+	c.BindJSON(&data)
+
+	gen := MOBIGenerator{
+		DocumentContent: data.Data,
+		BaseDir:         baseDir,
+	}
+
+	fileName, err := gen.ConvertToMOBI()
+	if err != nil {
+		panic(err)
+	}
+
+	sendMOBIToKindle(fileName, &data)
 }
